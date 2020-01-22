@@ -109,26 +109,36 @@ c.execute("""
 print(c.fetchall())
 
 print("""
--- On average, how many Items does each Character have?  """)
+7 -- On average, how many Items does each Character have?  """)
 c.execute("""
-    SELECT CAST(COUNT(cci.item_id) AS Float)/CAST(COUNT(DISTINCT cci.character_id) AS Float)
+SELECT AVG(count_items)
+FROM
+(
+    SELECT cci.character_id, COUNT(*) AS count_items
     FROM charactercreator_character_inventory cci
-    WHERE cci.item_id NOT IN (
-            SELECT aw.item_ptr_id
-            FROM armory_weapon aw
-    );
+    GROUP BY cci.character_id 
+);
 """)
 print(c.fetchone())
 
 print("""
--- On average, how many Weapons does each character have?""")
+8 -- On average, how many Weapons does each character have?""")
 c.execute("""
-    SELECT CAST(COUNT(cci.item_id) AS Float)/CAST(COUNT(DISTINCT cci.character_id) AS Float)
+SELECT AVG(count_items)
+FROM
+(
+    SELECT cci.character_id, COUNT(*) AS count_items
     FROM charactercreator_character_inventory cci
     WHERE cci.item_id IN (
             SELECT aw.item_ptr_id
             FROM armory_weapon aw
-    );
+    ) GROUP BY cci.character_id 
+);
+""")
+print(c.fetchone())
+
+c.execute("""
+        SELECT AVG(num_items) FROM (SELECT character_id, COUNT(*) as num_items FROM charactercreator_character_inventory GROUP BY character_id);
 """)
 print(c.fetchone())
 
