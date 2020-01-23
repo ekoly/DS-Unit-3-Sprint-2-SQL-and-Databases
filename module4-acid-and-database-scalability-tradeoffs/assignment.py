@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
-import sqlite3
+import os
+import psycopg2
 
-conn = sqlite3.connect("titanic.sqlite3")
+host = os.environ["HOST"]
+password = os.environ["PASSWORD"]
+user = os.environ["USER"]
+
+conn = psycopg2.connect(host=host, user=user, password=password, database=user)
 c = conn.cursor()
 
 print("""
@@ -37,7 +42,7 @@ print("""
 - How many passengers survived/died within each class?
 """)
 c.execute("""
-    SELECT COUNT(*) || ' passengers in class ' || Pclass || (CASE WHEN Survived == 1 THEN ' survived.' ELSE ' died.' END)
+    SELECT COUNT(*) || ' passengers in class ' || Pclass || (CASE WHEN Survived = 1 THEN ' survived.' ELSE ' died.' END)
     FROM titanic
     GROUP BY Pclass, Survived
 """)
@@ -48,7 +53,7 @@ print("""
 - What was the average age of survivors vs nonsurvivors?
 """)
 c.execute("""
-    SELECT AVG(Age) || (CASE WHEN Survived == 1 THEN ' was the average age of survivors' ELSE ' was the average age of nonsurvivors' END)
+    SELECT AVG(Age) || (CASE WHEN Survived = 1 THEN ' was the average age of survivors' ELSE ' was the average age of nonsurvivors' END)
     FROM titanic
     GROUP BY Survived;
 """)
@@ -109,7 +114,7 @@ c.execute("""
             WHEN Pclass = 2 THEN 'second class'
             WHEN Pclass = 3 THEN 'third class'
         END
-    ) || ': ' || AVG("Siblings/Spouses Aboard")
+    ) || ': ' || AVG(Siblings_or_spouses_aboard)
     FROM titanic
     GROUP BY Pclass
 """)
@@ -121,7 +126,7 @@ c.execute("""
             WHEN Survived = 1 THEN 'surivors'
             WHEN Survived = 0 THEN 'nonsurvivors'
         END
-    ) || ': ' || AVG("Siblings/Spouses Aboard")
+    ) || ': ' || AVG(Siblings_or_spouses_aboard)
     FROM titanic
     GROUP BY Survived
 """)
@@ -138,7 +143,7 @@ c.execute("""
             WHEN Pclass = 2 THEN 'second class'
             WHEN Pclass = 3 THEN 'third class'
         END
-    ) || ': ' || AVG("Parents/Children Aboard")
+    ) || ': ' || AVG(Parents_or_children_aboard)
     FROM titanic
     GROUP BY Pclass
 """)
@@ -150,7 +155,7 @@ c.execute("""
             WHEN Survived = 1 THEN 'surivors'
             WHEN Survived = 0 THEN 'nonsurvivors'
         END
-    ) || ': ' || AVG("Parents/Children Aboard")
+    ) || ': ' || AVG(Parents_or_children_aboard)
     FROM titanic
     GROUP BY Survived
 """)
@@ -165,7 +170,8 @@ c.execute("""
         SELECT COUNT(*) as name_count, Name
         FROM titanic
         GROUP BY Name
-    ) WHERE name_count > 1;
+    ) AS q
+    WHERE q.name_count > 1;
 """)
 print(c.fetchall())
 
@@ -175,3 +181,16 @@ print("""
   `Mrs.`) with the same last name and with at least 1 sibling/spouse aboard are
   a married couple.
 """)
+c.execute("""
+    SELECT Name
+    FROM titanic
+    WHERE ((Name LIKE 'Mr.%') OR (Name LIKE 'Mrs.%'))
+        AND Siblings_or_spouses_aboard > 0;
+""")
+names = c.fetchall()
+male_last_names = [name.split(" ")[-1] for name, in names if name.startswith("Mr.")]
+female_last_names = [name.split(" ")[-1] for name, in names if name.startswith("Mrs.")]
+
+overlap = set(male_last_names) & set(female_last_names)
+print("Number married couples:", len(overlap))
+print(overlap)
